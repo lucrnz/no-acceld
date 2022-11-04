@@ -149,10 +149,32 @@ func main() {
 						if len(propName) == 0 || len(propValue) == 0 {
 							continue
 						}
-						out, err := exec.Command("xinput", "--set-prop", devIdStr, "libinput "+propName, propValue).CombinedOutput()
+
+						fullPropName := "libinput " + propName
+
+						out, err := exec.Command("xinput", "--list-props", devIdStr).CombinedOutput()
+						if err != nil {
+							if cfg.EnableLog {
+								fmt.Printf("xinput error: %v\n", err)
+								if len(out) > 0 {
+									fmt.Printf("xinput output: %v\n", string(out))
+								}
+							}
+							continue
+						}
+
+						if len(out) == 0 {
+							continue
+						}
+
+						if !strings.Contains(string(out), fullPropName) {
+							continue
+						}
+
+						out, err = exec.Command("xinput", "--set-prop", devIdStr, fullPropName, propValue).CombinedOutput()
 						if cfg.EnableLog {
 							if err != nil {
-								fmt.Printf("xinput error: %v", err)
+								fmt.Printf("xinput error: %v\n", err)
 							}
 							if len(out) > 0 {
 								fmt.Printf("xinput output: %v\n", string(out))
