@@ -3,8 +3,7 @@ A program that constantly disables mouse acceleration  (For libinput)
 
 # Prerequisites
  - Go programming language - [Get it here](https://golang.org/doc/install)
- - notify-send (package libnotify-bin on Debian/Ubuntu, libnotify ArchLinux)
-- setkxbmap (package x11-xkb-utils on Debian/Ubuntu, xorg-setxkbmap ArchLinux)
+ - A distro/operative system with libinput (xinput command should be available)
 
 # How to install
 **Optimization note**: Since Go 1.18, if you are using an x86_64 CPU you can setup the environment variable `GOAMD64`
