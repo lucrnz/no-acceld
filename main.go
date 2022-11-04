@@ -75,7 +75,7 @@ func main() {
 		if len(xdgConfigHome) > 0 {
 			cfgFilePath = xdgConfigHome + "/no-acceld.json"
 		} else {
-			cfgFilePath = os.Getenv("HOME") + "/no-acceld.json"
+			cfgFilePath = os.Getenv("HOME") + "/.config/no-acceld.json"
 		}
 	}
 
