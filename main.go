@@ -21,20 +21,23 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
 	"os"
 	"os/exec"
 	"os/signal"
+	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
+	"unicode"
 )
 
 type Config struct {
 	Device          string            `json:"device"`
 	Properties      map[string]string `json:"properties"`
 	IntervalSeconds int               `json:"interval"`
+	EnableLog       bool              `json:"log"`
 }
 
 type LoopFlag struct {
@@ -42,11 +45,26 @@ type LoopFlag struct {
 	value bool
 }
 
+// This is probably a slow way of doing this but for will work for now.
+func stringSelectUntilSpace(value string) string {
+	var sb strings.Builder
+
+	for _, r := range value {
+		if unicode.IsSpace(r) {
+			break
+		}
+		sb.WriteRune(r)
+	}
+
+	return sb.String()
+}
+
 func main() {
 	cfg := Config{
 		Device:          "",
 		Properties:      make(map[string]string),
 		IntervalSeconds: 0,
+		EnableLog:       false,
 	}
 
 	cfgFilePath := os.Getenv("CONFIG_FILE")
@@ -84,7 +102,9 @@ func main() {
 	}
 
 	go func() {
-		fmt.Printf("no-acceld: Starting with the following configuration:\n\tDevice name: %v\n\tInterval: %v seconds.\n\n", cfg.Device, cfg.IntervalSeconds)
+		if cfg.EnableLog {
+			log.Printf("starting with the following configuration:\n\tDevice name:\t%v\n\tInterval:\t%v seconds.\n\n", cfg.Device, cfg.IntervalSeconds)
+		}
 		for {
 			loopFlag.mu.Lock()
 			if !loopFlag.value {
@@ -93,18 +113,58 @@ func main() {
 			}
 			loopFlag.mu.Unlock()
 
-			listDevices, err := exec.Command("xinput", "--list").Output()
+			devListData, err := exec.Command("xinput", "--list").Output()
 			if err != nil {
 				panic(err)
 			}
 
-			fmt.Printf("%v\n", string(listDevices))
+			if len(devListData) == 0 {
+				panic(errors.New("empty command output"))
+			}
+
+			for _, dev := range strings.Split(string(devListData), "\n") {
+				if strings.Contains(dev, "id=") &&
+					strings.Contains(dev, "pointer") &&
+					strings.Contains(dev, cfg.Device) {
+					dataAlpha := strings.SplitN(dev, "id=", 2)
+					if len(dataAlpha) != 2 {
+						continue
+					}
+					devIdStr := stringSelectUntilSpace(dataAlpha[1])
+					devIdInt, err := strconv.Atoi(devIdStr)
+					if err != nil {
+						continue
+					}
+					if devIdInt < 0 {
+						continue
+					}
+					if cfg.EnableLog {
+						log.Printf("match device with id %v\n", devIdStr)
+					}
+					for propName, propValue := range cfg.Properties {
+						if len(propName) == 0 || len(propValue) == 0 {
+							continue
+						}
+						out, err := exec.Command("xinput", "--set-prop", devIdStr, "libinput "+propName, propValue).CombinedOutput()
+						if cfg.EnableLog {
+							if err != nil {
+								log.Printf("xinput error: %v", err)
+							}
+							if len(out) > 0 {
+								log.Printf("xinput output: %v\n", string(out))
+							}
+						}
+					}
+				}
+			}
+
 			time.Sleep(time.Duration(cfg.IntervalSeconds) * time.Second)
 		}
-		log.Printf("Goodbye!\n")
 	}()
 	sig := <-cancelChan
-	log.Printf("Caught signal %v\n", sig)
+	if cfg.EnableLog {
+		log.Printf("caught signal %v\n", sig)
+	}
 	loopFlag.mu.Lock()
 	loopFlag.value = false
 	loopFlag.mu.Unlock()
