@@ -21,7 +21,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"log"
+	"fmt"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -103,7 +103,7 @@ func main() {
 
 	go func() {
 		if cfg.EnableLog {
-			log.Printf("starting with the following configuration:\n\tDevice name:\t%v\n\tInterval:\t%v seconds.\n\n", cfg.Device, cfg.IntervalSeconds)
+			fmt.Printf("starting with the following configuration:\n\tDevice name:\t%v\n\tInterval:\t%v seconds.\n\n", cfg.Device, cfg.IntervalSeconds)
 		}
 		for {
 			loopFlag.mu.Lock()
@@ -113,16 +113,20 @@ func main() {
 			}
 			loopFlag.mu.Unlock()
 
-			devListData, err := exec.Command("xinput", "--list").Output()
-			if err != nil {
-				panic(err)
+			xinputOutput, err := exec.Command("xinput", "--list").CombinedOutput()
+			xinputOutputStr := string(xinputOutput)
+			if cfg.EnableLog && err != nil {
+				fmt.Printf("xinput error: %v", err)
+				if len(xinputOutputStr) > 0 {
+					fmt.Printf("xinput output: %v\n", xinputOutputStr)
+				}
 			}
 
-			if len(devListData) == 0 {
-				panic(errors.New("empty command output"))
+			if len(xinputOutputStr) == 0 {
+				continue
 			}
 
-			for _, dev := range strings.Split(string(devListData), "\n") {
+			for _, dev := range strings.Split(xinputOutputStr, "\n") {
 				if strings.Contains(dev, "id=") &&
 					strings.Contains(dev, "pointer") &&
 					strings.Contains(dev, cfg.Device) {
@@ -139,7 +143,7 @@ func main() {
 						continue
 					}
 					if cfg.EnableLog {
-						log.Printf("match device with id %v\n", devIdStr)
+						fmt.Printf("match device with id %v\n", devIdStr)
 					}
 					for propName, propValue := range cfg.Properties {
 						if len(propName) == 0 || len(propValue) == 0 {
@@ -148,10 +152,10 @@ func main() {
 						out, err := exec.Command("xinput", "--set-prop", devIdStr, "libinput "+propName, propValue).CombinedOutput()
 						if cfg.EnableLog {
 							if err != nil {
-								log.Printf("xinput error: %v", err)
+								fmt.Printf("xinput error: %v", err)
 							}
 							if len(out) > 0 {
-								log.Printf("xinput output: %v\n", string(out))
+								fmt.Printf("xinput output: %v\n", string(out))
 							}
 						}
 					}
@@ -163,7 +167,7 @@ func main() {
 	}()
 	sig := <-cancelChan
 	if cfg.EnableLog {
-		log.Printf("caught signal %v\n", sig)
+		fmt.Printf("caught signal %v\n", sig)
 	}
 	loopFlag.mu.Lock()
 	loopFlag.value = false
