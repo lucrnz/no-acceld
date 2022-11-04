@@ -3,7 +3,6 @@
     "log": true,
     "interval": 60,
     "properties": {
-        "Accel Profile Enabled": "0, 1",
-        "Accel Profile Enabled Default": "0, 1"
+        "Accel Profile Enabled": "0, 1"
     }
 }

@@ -103,7 +103,7 @@ func main() {
 
 	go func() {
 		if cfg.EnableLog {
-			fmt.Printf("starting with the following configuration:\n\tDevice name:\t%v\n\tInterval:\t%v seconds.\n\n", cfg.Device, cfg.IntervalSeconds)
+			fmt.Printf("starting with the following configuration:\n\tDevice name: %v\n\tInterval: %v seconds.\n\n", cfg.Device, cfg.IntervalSeconds)
 		}
 		for {
 			loopFlag.mu.Lock()
@@ -171,7 +171,24 @@ func main() {
 							continue
 						}
 
-						out, err = exec.Command("xinput", "--set-prop", devIdStr, fullPropName, propValue).CombinedOutput()
+						if cfg.EnableLog {
+							fmt.Printf("setting property \"%v\" with value \"%v\"\n", fullPropName, propValue)
+						}
+
+						cmdArgs := []string{"--set-prop", devIdStr, fullPropName}
+
+						if strings.Contains(propValue, ",") {
+							propValues := strings.SplitN(propValue, ",", 2)
+							if len(propValues) < 2 {
+								continue
+							}
+							cmdArgs = append(cmdArgs, strings.TrimSpace(propValues[0])+",")
+							cmdArgs = append(cmdArgs, strings.TrimSpace(propValues[1]))
+						} else {
+							cmdArgs = append(cmdArgs, propValue)
+						}
+
+						out, err = exec.Command("xinput", cmdArgs...).CombinedOutput()
 						if cfg.EnableLog {
 							if err != nil {
 								fmt.Printf("xinput error: %v\n", err)
