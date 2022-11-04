@@ -21,12 +21,15 @@ You can found a detailed description [here](https://github.com/golang/go/wiki/Mi
 	cp config.json.example ~/.config/no-acceld.json
 
 Find the name of your mouse using this command:
+
     xinput --list
 
 Edit the config file to match the device name:
+
     $EDITOR ~/.config/no-acceld.json
 
 You can override the location of the config file by using this environment variable:
+
     CONFIG_FILE=/home/user/example/no-acceld.json no-acceld
 
 # Disclaimer
